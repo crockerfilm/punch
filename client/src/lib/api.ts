@@ -8,19 +8,6 @@ export async function transcribeVideo(file: File): Promise<{ words: Word[]; text
   return r.json();
 }
 
-export async function suggestCaptions(
-  words: Word[],
-  opts?: { emphasisDetection?: boolean },
-): Promise<{ chunks: Chunk[] }> {
-  const r = await fetch('/api/suggest-captions', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ words, emphasisDetection: opts?.emphasisDetection !== false }),
-  });
-  if (!r.ok) throw new Error((await r.json()).error || 'suggest failed');
-  return r.json();
-}
-
 export async function suggestEmphasis(chunks: Chunk[]): Promise<{ chunks: Chunk[] }> {
   const r = await fetch('/api/suggest-emphasis', {
     method: 'POST',

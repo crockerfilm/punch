@@ -2,7 +2,7 @@ import { checkAuthRequired, verifyPassword, getStoredPassword, setStoredPassword
 import type { Chunk, StylePreset, Word } from './lib/types';
 import { DEFAULT_STYLE, ANIMATIONS, EMPHASIS_MODES, EMPHASIS_STYLES, FONT_CHOICES } from './lib/presets';
 import { drawFrame, loadCustomFont, renderStylePreviewDataUrl } from './lib/render';
-import { transcribeVideo, suggestCaptions, suggestEmphasis } from './lib/api';
+import { transcribeVideo, suggestEmphasis } from './lib/api';
 import { exportPngSequence, exportPreviewMp4, exportProResAlpha } from './lib/export';
 import { saveProject, loadProject, markDirty, markClean, onDirtyChange, isDirty } from './lib/project';
 import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styleLibrary';
@@ -575,7 +575,6 @@ const statusEl = $('#status');
 const aiSummary = $('#aiSummary');
 const aiDesc = $('#aiDesc');
 const aiRerun = $<HTMLButtonElement>('#aiRerun');
-const aiChunkingBox = $<HTMLInputElement>('#aiChunking');
 const aiEmphasisRow = $('#aiEmphasisRow');
 const aiEmphasisFlagBox = $<HTMLInputElement>('#aiEmphasisFlag');
 const exportChunksBtn = $<HTMLButtonElement>('#exportChunksBtn');
@@ -714,16 +713,10 @@ aiRerun.addEventListener('click', async () => {
   aiRerun.disabled = true;
   const wantEmphasis = style.emphasisMode === 'auto' && aiEmphasisFlagBox.checked;
   try {
-    let c: Chunk[];
-    if (aiChunkingBox.checked) {
-      aiRerun.textContent = 'Thinking…';
-      ({ chunks: c } = await suggestCaptions(words, { emphasisDetection: wantEmphasis }));
-    } else {
-      c = autoChunkByFit(words, style, video.videoWidth || 1080);
-      if (wantEmphasis) {
-        aiRerun.textContent = 'Flagging keywords…';
-        ({ chunks: c } = await suggestEmphasis(c));
-      }
+    let c = autoChunkByFit(words, style, video.videoWidth || 1080);
+    if (wantEmphasis) {
+      aiRerun.textContent = 'Flagging keywords…';
+      ({ chunks: c } = await suggestEmphasis(c));
     }
     chunks = c;
     selectedChunk = null;

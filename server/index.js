@@ -200,56 +200,6 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
 });
 
 /**
- * POST /api/suggest-captions
- * JSON body: { words, emphasisDetection }
- * returns { chunks: [{ text, start, end, words: [{word,start,end,emphasis}] }] }
- * (Vertical placement is a manual per-chunk slider in the UI now, not AI-picked —
- * that used to cost a second vision call per generation; not worth the tokens.)
- */
-app.post('/api/suggest-captions', async (req, res) => {
-  const words = Array.isArray(req.body.words) ? req.body.words : [];
-  if (!words.length) return res.status(400).json({ error: 'no words' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-
-  const emphasisDetection = req.body.emphasisDetection !== false;
-  const transcript = words.map((w, i) => `${i}:${w.word}`).join(' ');
-
-  const groupingPrompt = `You are styling captions for a punchy short-form vertical video ad (UGC/creator style).
-Given this word list (index:word), group words into short caption chunks (1-5 words each, following natural speech pauses/emphasis, similar to karaoke-style captions).${emphasisDetection ? ' Also pick which word index(es) in each chunk should be the "emphasis" word (the single most important/loud word - things like numbers, product names, superlatives, strong verbs/adjectives). Not every chunk needs an emphasis word.' : ''}
-
-Word list:
-${transcript}
-
-Respond with ONLY valid JSON, no prose, in this exact shape:
-{"chunks":[{"wordIndexes":[0,1,2]${emphasisDetection ? ',"emphasisIndexes":[1]' : ''}}, ...]}
-
-Every word index from 0 to ${words.length - 1} must appear in exactly one chunk, in order, covering the whole transcript.`;
-
-  try {
-    const raw = await callClaude({ content: groupingPrompt, maxTokens: 8192 });
-    const parsed = extractJson(raw);
-
-    const chunks = (parsed.chunks || []).map(c => {
-      const chunkWords = c.wordIndexes.map(i => ({
-        ...words[i],
-        emphasis: emphasisDetection && (c.emphasisIndexes || []).includes(i),
-      }));
-      return {
-        text: chunkWords.map(w => w.word).join(' '),
-        start: chunkWords[0]?.start ?? 0,
-        end: chunkWords[chunkWords.length - 1]?.end ?? 0,
-        words: chunkWords,
-      };
-    });
-
-    res.json({ chunks });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err.message || err) });
-  }
-});
-
-/**
  * POST /api/suggest-emphasis
  * JSON body: { chunks: [{ text, start, end, words: [{word,start,end}] }] }
  * Picks one standout word per chunk without re-deciding chunk boundaries — the
