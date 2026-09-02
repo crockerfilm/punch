@@ -580,6 +580,7 @@ const aiEmphasisRow = $('#aiEmphasisRow');
 const aiEmphasisFlagBox = $<HTMLInputElement>('#aiEmphasisFlag');
 const exportChunksBtn = $<HTMLButtonElement>('#exportChunksBtn');
 const importChunksInput = $<HTMLInputElement>('#importChunksInput');
+const retranscribeBtn = $<HTMLButtonElement>('#retranscribeBtn');
 
 exportChunksBtn.addEventListener('click', () => {
   if (!chunks.length) return;
@@ -663,16 +664,26 @@ function handleFile(f: File) {
     emptyState.hidden = true;
     resizeCanvas();
   }, { once: true });
-  words = []; chunks = [];
-  renderTimeline();
-  updateAiCard();
-  markDirty();
-  runTranscription(f);
+  const hasExisting = words.length > 0 || chunks.length > 0;
+  if (!hasExisting) {
+    renderTimeline();
+    updateAiCard();
+    markDirty();
+    runTranscription(f);
+  } else {
+    aiRerun.disabled = false;
+    retranscribeBtn.disabled = false;
+    aiSummary.textContent = `${chunks.length} caption chunks loaded`;
+    aiDesc.textContent = 'Video attached — captions kept as loaded. Use "Re-run transcript" if you need to re-transcribe this video instead.';
+    renderTimeline();
+    markDirty();
+  }
 }
 
 async function runTranscription(f: File) {
   aiSummary.textContent = 'Transcribing…';
   aiDesc.textContent = 'Extracting audio and running Whisper. This can take a moment.';
+  retranscribeBtn.disabled = true;
   try {
     const { words: w, fps } = await transcribeVideo(f);
     words = w;
@@ -681,13 +692,22 @@ async function runTranscription(f: File) {
     aiDesc.textContent = 'Click "Generate captions" to build the timeline for this style.';
     aiRerun.disabled = false;
     aiRerun.textContent = 'Generate captions';
+    markDirty();
     setStatus('good', `Transcribed ${words.length} words`);
   } catch (err: any) {
     setStatus('bad', 'Transcription failed: ' + err.message);
     aiSummary.textContent = 'Transcription failed';
     aiDesc.textContent = err.message;
+  } finally {
+    retranscribeBtn.disabled = false;
   }
 }
+
+retranscribeBtn.addEventListener('click', () => {
+  if (!videoFile) return;
+  if (chunks.length && !confirm('Re-running the transcript keeps your existing caption chunks as-is — you\'ll need to click "Generate captions" again afterward if you want them rebuilt from the new transcript. Continue?')) return;
+  runTranscription(videoFile);
+});
 
 aiRerun.addEventListener('click', async () => {
   if (!words.length) return;
@@ -725,6 +745,7 @@ function updateAiCard() {
     aiDesc.textContent = '';
     aiRerun.disabled = true;
     aiRerun.textContent = 'Generate captions';
+    retranscribeBtn.disabled = true;
   }
 }
 
