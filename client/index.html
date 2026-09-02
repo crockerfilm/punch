@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Punch — Caption Tool</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=Anton&family=Bebas+Neue&family=Archivo+Black&family=Oswald:wght@600;700&family=Poppins:wght@700;900&family=Montserrat:wght@700;900&family=Bangers&family=Permanent+Marker&family=Righteous&family=Playfair+Display:wght@700;900&display=swap">
+  <link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+  <div class="layout">
+    <!-- ============ SIDEBAR ============ -->
+    <div class="sidebar">
+      <div class="brand">
+        <button id="backBtn" class="logo" title="Back">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12L10 6M4 12L10 18M4 12H20" stroke="#241a04" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="title">Punch</div>
+        <div class="sub">v0.1</div>
+      </div>
+      <div class="divider"></div>
+
+      <!-- ============ PHASE 0: LANDING ============ -->
+      <div id="phaseLandingSidebar">
+        <div class="section">
+          <div class="section-h">Get started</div>
+          <div class="wizard-sub" style="margin-bottom:14px;">Import a saved style and/or a previous chunks file to skip ahead — or leave both blank to build a new style from scratch.</div>
+
+          <div class="field">
+            <label>Style (optional)</label>
+            <div id="landingStyleChip" class="font-chip" hidden></div>
+            <label class="upload-font" for="landingStyleInput">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#8d8c96" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Upload a style file
+            </label>
+            <input id="landingStyleInput" type="file" accept=".json" hidden>
+            <button id="browseGlobalBtn" class="link-btn" style="margin-top:0;">Browse global library →</button>
+          </div>
+
+          <div class="field">
+            <label>Chunks (optional)</label>
+            <div id="landingChunksChip" class="font-chip" hidden></div>
+            <label class="upload-font" for="landingChunksInput">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#8d8c96" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Upload a chunks file
+            </label>
+            <input id="landingChunksInput" type="file" accept=".json" hidden>
+          </div>
+        </div>
+
+        <div class="export-wrap">
+          <button id="landingStartBtn" class="btn-export">Get started →</button>
+        </div>
+      </div>
+
+      <!-- ============ PHASE 1: STYLE BUILDER ============ -->
+      <div id="phaseStyleSidebar">
+
+        <div class="section" id="wizardSection">
+          <div id="wizardProgress" class="wizard-progress"></div>
+          <div id="wizardCard" class="wizard-card"></div>
+          <div id="wizardSummary" class="wizard-summary" hidden></div>
+        </div>
+
+        <div class="section" id="fineTuneSection" hidden>
+          <div class="section-h">Fine-tune</div>
+
+          <div class="field">
+            <label>Font</label>
+            <select id="fontSelect"></select>
+            <label class="upload-font" for="customFontInput">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#8d8c96" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Upload custom font (.otf/.ttf)
+            </label>
+            <input id="customFontInput" type="file" accept=".otf,.ttf,.woff,.woff2" hidden>
+            <div id="customFontChip" class="font-chip" hidden></div>
+          </div>
+
+          <div class="field">
+            <div class="row-label"><span>Size</span><span id="sizeVal" class="val"></span></div>
+            <input id="size" type="range" min="24" max="160" value="88">
+          </div>
+
+          <div class="field two-col">
+            <div>
+              <label>Base color</label>
+              <input id="baseColor" type="color" value="#ffffff">
+            </div>
+            <div>
+              <label>Emphasis color</label>
+              <input id="hiColor" type="color" value="#f0b34c">
+            </div>
+          </div>
+
+          <div class="field">
+            <div class="row-label"><span>Default position</span><span id="vposVal" class="val"></span></div>
+            <input id="vpos" type="range" min="0" max="100" value="66">
+            <div class="hint-sub">Editors can still override this per chunk</div>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-row"><span>Text stroke</span><div id="tStroke" class="toggle"></div></div>
+            <div class="sub-row">
+              <input id="strokeColor" type="color" value="#000000">
+              <div class="mini-slider"><span>Width</span><input id="strokeW" type="range" min="0" max="12" value="4"><span id="strokeWVal" class="val"></span></div>
+            </div>
+          </div>
+          <div class="toggle-card">
+            <div class="toggle-row"><span>Drop shadow</span><div id="tShadow" class="toggle"></div></div>
+            <div class="sub-row">
+              <input id="shadowColor" type="color" value="#000000">
+              <div class="mini-slider"><span>Blur</span><input id="shadowBlur" type="range" min="0" max="30" value="6"><span id="shadowBlurVal" class="val"></span></div>
+            </div>
+          </div>
+          <div class="toggle-card">
+            <div class="toggle-row"><span>Background box</span><div id="tBg" class="toggle"></div></div>
+            <div class="sub-row">
+              <input id="bgColor" type="color" value="#000000">
+              <div class="mini-slider"><span>Opacity</span><input id="bgOpacity" type="range" min="0" max="100" value="70"><span id="bgOpacityVal" class="val"></span></div>
+            </div>
+          </div>
+          <div class="toggle-row plain"><span>ALL CAPS</span><div id="tCaps" class="toggle on"></div></div>
+        </div>
+
+        <div class="export-wrap" id="styleActionsWrap" hidden>
+          <div class="style-actions-row">
+            <button id="saveStyleBtn" class="btn-ghost">Save</button>
+            <button id="downloadStyleBtn" class="btn-ghost">Download</button>
+            <label class="btn-ghost" for="uploadStyleInput" style="text-align:center;cursor:pointer;">Upload</label>
+            <input id="uploadStyleInput" type="file" accept=".json,.punchstyle.json" hidden>
+          </div>
+          <button id="saveGlobalBtn" class="btn-ghost" style="width:100%;margin-bottom:8px;">Save to global library</button>
+          <button id="continueToFootageBtn" class="btn-export">Continue to footage →</button>
+        </div>
+      </div>
+
+      <!-- ============ PHASE 2: FOOTAGE ============ -->
+      <div id="phaseFootageSidebar" hidden>
+
+        <div class="style-summary">
+          <div>
+            <div class="style-summary-label">Style</div>
+            <div id="styleSummaryName" class="style-summary-name">Custom</div>
+          </div>
+          <button id="editStyleBtn" class="btn-ghost">Edit style</button>
+        </div>
+
+        <div class="section">
+          <div class="section-h"><div class="step">1</div>Upload video</div>
+          <div id="dropzone" class="dropzone">
+            <input id="fileInput" type="file" accept="video/*" hidden>
+            <span><strong>Click to browse</strong> or drag &amp; drop</span>
+          </div>
+          <div id="fileCard" class="file-card" hidden>
+            <div class="thumb"></div>
+            <div class="file-meta">
+              <div id="fileName" class="file-name"></div>
+              <div id="fileInfo" class="file-info"></div>
+            </div>
+            <svg id="fileRemove" width="14" height="14" viewBox="0 0 24 24" fill="none" style="cursor:pointer;flex-shrink:0"><path d="M6 6L18 18M6 18L18 6" stroke="#8d8c96" stroke-width="2" stroke-linecap="round"/></svg>
+          </div>
+          <div id="status" class="status" hidden></div>
+        </div>
+
+        <div class="section">
+          <div class="section-h ai"><div class="step ai-step">
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="none"><path d="M20 6L9 17L4 12" stroke="var(--ai)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>Build captions</div>
+          <div id="aiCard" class="ai-card">
+            <div class="ai-head">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 2L14.2 9.2L21 12L14.2 14.8L12 22L9.8 14.8L3 12L9.8 9.2L12 2Z" fill="var(--ai)"/></svg>
+              <span id="aiSummary">Upload a video to begin</span>
+            </div>
+            <div id="aiDesc" class="ai-desc"></div>
+            <label class="ai-check">
+              <input id="aiChunking" type="checkbox">
+              <span>AI chunking — smarter grouping via Claude (uses tokens); off by default just splits words to fit one line cleanly</span>
+            </label>
+            <label class="ai-check" id="aiEmphasisRow" hidden>
+              <input id="aiEmphasisFlag" type="checkbox" checked>
+              <span>AI keyword flagging — let Claude pick the standout word per chunk (uses tokens)</span>
+            </label>
+            <button id="aiRerun" class="btn-ghost-ai" disabled>Generate captions</button>
+            <div class="chunk-io-row">
+              <button id="exportChunksBtn" class="btn-ghost" disabled>Export chunks</button>
+              <label class="btn-ghost" for="importChunksInput" style="text-align:center;cursor:pointer;">Import chunks</label>
+              <input id="importChunksInput" type="file" accept=".json" hidden>
+            </div>
+          </div>
+        </div>
+
+        <div class="export-wrap">
+          <button id="exportBtn" class="btn-export">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#241a04" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Export transparent overlay
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ PREVIEW ============ -->
+    <div class="main">
+      <div class="topbar">
+        <div class="topbar-left" id="topbarFootageLeft" hidden>
+          <input id="projectName" class="project-name" value="Untitled project">
+          <span id="dirtyDot" class="dirty" hidden><span class="dot"></span>Unsaved changes</span>
+          <button id="saveBtn" class="btn-save">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 4H16L19 7V20H5V4Z" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/><path d="M8 4V9H15V4" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/></svg>
+            Save project
+          </button>
+        </div>
+        <div class="topbar-left" id="topbarStyleLeft">
+          <span class="topbar-style-title" id="topbarStyleTitle">Building your caption style</span>
+        </div>
+        <div class="tc" id="tcWrap" hidden><span id="tcCur">00:00.000</span> / <span id="tcTot">00:00.000</span></div>
+      </div>
+
+      <div class="canvaswrap">
+        <div id="stage" class="stage">
+          <div id="stylePlaceholderBg" class="style-placeholder-bg"></div>
+          <video id="video" playsinline></video>
+          <canvas id="cv" width="1080" height="1920"></canvas>
+          <div id="emptyState" class="empty-state" hidden>Upload a video to begin</div>
+        </div>
+      </div>
+
+      <div id="footageControls" hidden>
+        <div class="transport">
+          <button id="playBtn" class="playbtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="#241a04"><path d="M6 4L20 12L6 20V4Z"/></svg>
+          </button>
+          <input id="scrub" type="range" min="0" max="1000" value="0" class="scrub">
+        </div>
+
+        <div class="timeline-wrap">
+          <div class="timeline-head">
+            <span class="tl-label">Caption chunks</span>
+            <span id="chunkCount" class="tl-count">0 chunks · click to edit</span>
+          </div>
+          <div id="timeline" class="timeline"></div>
+          <div id="editRow" class="edit-row" hidden></div>
+        </div>
+      </div>
+
+      <div id="stylePreviewNote" class="style-preview-note">Live preview — looping a sample caption so you can see the style before bringing in footage</div>
+    </div>
+  </div>
+
+  <div id="exportModal" class="modal" hidden>
+    <div class="modal-card">
+      <div class="modal-title">Export</div>
+      <button id="exportProRes" class="modal-btn">ProRes 4444 (.mov) — native alpha, drops straight into Premiere</button>
+      <button id="exportPng" class="modal-btn">PNG sequence (.zip) — true transparency, import as image sequence</button>
+      <button id="exportMp4" class="modal-btn">Preview MP4 — black bg, use Screen blend mode</button>
+      <div id="exportProgress" class="modal-progress" hidden>
+        <div class="bar"><div id="exportBar"></div></div>
+        <div id="exportLabel" class="modal-label"></div>
+      </div>
+      <button id="exportClose" class="modal-close">Cancel</button>
+    </div>
+  </div>
+
+  <div id="globalLibraryModal" class="modal" hidden>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-title">Global style library</div>
+      <div id="globalLibraryStatus" class="global-lib-status"></div>
+      <div id="globalLibraryGrid" class="global-lib-grid"></div>
+      <button id="globalLibraryClose" class="modal-close">Close</button>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
