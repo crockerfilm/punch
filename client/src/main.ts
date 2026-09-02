@@ -1,3 +1,4 @@
+import { checkAuthRequired, verifyPassword, getStoredPassword, setStoredPassword } from './lib/auth';
 import type { Chunk, StylePreset, Word } from './lib/types';
 import { DEFAULT_STYLE, ANIMATIONS, EMPHASIS_MODES, EMPHASIS_STYLES, FONT_CHOICES } from './lib/presets';
 import { drawFrame, loadCustomFont, renderStylePreviewDataUrl } from './lib/render';
@@ -1078,24 +1079,53 @@ browseGlobalBtn.addEventListener('click', async () => {
 globalLibraryClose.addEventListener('click', () => { globalLibraryModal.hidden = true; });
 
 // ================================================================
-// init
+// init (gated behind the shared-password check, when one is configured)
 // ================================================================
-renderWizard();
-renderTimeline();
-
-const existing = loadProject();
-if (existing && existing.chunks?.length) {
-  projectName.value = existing.name;
-  chunks = existing.chunks;
-  style = existing.style;
-  currentStyleName = style.name || 'Custom';
-  wizardDone = true;
-  fineTuneSection.hidden = false;
-  styleActionsWrap.hidden = false;
-  syncCustomizeUI();
+function boot() {
   renderWizard();
   renderTimeline();
-  setPhase('footage');
-} else {
-  setPhase('landing');
+
+  const existing = loadProject();
+  if (existing && existing.chunks?.length) {
+    projectName.value = existing.name;
+    chunks = existing.chunks;
+    style = existing.style;
+    currentStyleName = style.name || 'Custom';
+    wizardDone = true;
+    fineTuneSection.hidden = false;
+    styleActionsWrap.hidden = false;
+    syncCustomizeUI();
+    renderWizard();
+    renderTimeline();
+    setPhase('footage');
+  } else {
+    setPhase('landing');
+  }
 }
+
+(async () => {
+  const required = await checkAuthRequired();
+  if (!required) { boot(); return; }
+
+  const stored = getStoredPassword();
+  if (stored && await verifyPassword(stored)) { boot(); return; }
+
+  const gate = $('#authGate');
+  const form = $<HTMLFormElement>('#authGateForm');
+  const input = $<HTMLInputElement>('#authGateInput');
+  const error = $('#authGateError');
+  gate.hidden = false;
+  input.focus();
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const pw = input.value;
+    if (await verifyPassword(pw)) {
+      setStoredPassword(pw);
+      gate.hidden = true;
+      boot();
+    } else {
+      error.hidden = false;
+      input.select();
+    }
+  });
+})();

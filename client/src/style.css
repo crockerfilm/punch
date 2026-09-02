@@ -217,3 +217,11 @@ input[type=color]{width:100%;height:30px;border-radius:7px;border:1px solid var(
 .topbar-style-title{font-size:13.5px;font-weight:700;}
 .style-placeholder-bg{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 35%,#2a2620 0%,#0c0c0e 70%);}
 .style-preview-note{text-align:center;font-size:11px;color:var(--muted-2);font-weight:600;padding:0 24px 16px 24px;}
+
+.auth-gate{position:fixed;inset:0;z-index:100;background:radial-gradient(ellipse at 50% 35%,#1d1a15 0%,#0b0b0f 70%);display:flex;align-items:center;justify-content:center;}
+.auth-gate-card{width:320px;display:flex;flex-direction:column;align-items:center;text-align:center;}
+.auth-gate-title{font-family:var(--font-display);font-weight:700;font-size:22px;margin-bottom:8px;}
+.auth-gate-sub{font-size:12.5px;color:var(--muted);line-height:1.5;margin-bottom:18px;}
+.auth-gate-card input[type=password]{width:100%;padding:11px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:14px;text-align:center;}
+.auth-gate-card input[type=password]:focus{outline:1.5px solid var(--accent);border-color:var(--accent);}
+.auth-gate-error{margin-top:10px;font-size:12px;color:#e05858;}

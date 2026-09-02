@@ -23,6 +23,25 @@ const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 
+// ---------------- shared-password gate (optional) ----------------
+// Only enforced when APP_PASSWORD is set — local dev without it stays fully open.
+// This is deliberately simple (one shared password, no accounts) — its only job
+// is stopping a stray public link from running up Whisper/Claude API costs, not
+// real auth. Checked server-side (not just hidden in the UI) since every route
+// below costs real money per call.
+app.get('/api/auth/status', (req, res) => {
+  res.json({ required: !!process.env.APP_PASSWORD });
+});
+app.post('/api/auth/check', (req, res) => {
+  if (!process.env.APP_PASSWORD) return res.json({ ok: true });
+  res.json({ ok: req.body?.password === process.env.APP_PASSWORD });
+});
+app.use('/api', (req, res, next) => {
+  if (!process.env.APP_PASSWORD) return next();
+  if (req.headers['x-app-password'] === process.env.APP_PASSWORD) return next();
+  res.status(401).json({ error: 'Wrong or missing app password' });
+});
+
 // ---------------- global style library (Postgres, optional) ----------------
 // Only configured when DATABASE_URL is set (e.g. Railway's Postgres plugin) —
 // local dev without it just runs with the global library disabled, everything
