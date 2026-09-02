@@ -9,6 +9,7 @@ import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styl
 import { fetchGlobalStyles, saveToGlobalLibrary } from './lib/globalLibrary';
 import { downloadChunks, loadChunksFromFile } from './lib/chunkPackage';
 import { autoChunkByFit } from './lib/autoChunk';
+import { fetchCloudProjects, fetchCloudProject, saveCloudProject } from './lib/cloudProjects';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -937,7 +938,43 @@ function renderEditRow() {
   editRow.appendChild(hint);
 }
 
-// ---------------- project save ----------------
+// ---------------- project save (local + cloud, with autosave) ----------------
+let cloudProjectId: number | null = null;
+const cloudStatus = $('#cloudStatus');
+let autosaveTimer: number | undefined;
+
+function setCloudStatus(kind: 'saving' | 'saved' | 'error' | '', text: string) {
+  cloudStatus.hidden = !text;
+  cloudStatus.className = 'cloud-status' + (kind ? ' ' + kind : '');
+  cloudStatus.textContent = text;
+}
+
+async function pushToCloud() {
+  if (!chunks.length) return;
+  setCloudStatus('saving', 'Saving to cloud…');
+  try {
+    const saved = await saveCloudProject(cloudProjectId, {
+      name: projectName.value || 'Untitled project',
+      videoName: videoFile?.name || '',
+      duration: video.duration || 0,
+      words,
+      chunks,
+      style,
+    });
+    cloudProjectId = saved.id;
+    setCloudStatus('saved', 'Saved to cloud');
+    setTimeout(() => { if (cloudStatus.classList.contains('saved')) setCloudStatus('', ''); }, 3000);
+  } catch (err: any) {
+    setCloudStatus('error', 'Cloud save unavailable');
+  }
+}
+
+function scheduleAutosave() {
+  if (phase !== 'footage' || !chunks.length) return;
+  clearTimeout(autosaveTimer);
+  autosaveTimer = window.setTimeout(pushToCloud, 4000);
+}
+
 projectName.addEventListener('input', markDirty);
 saveBtn.addEventListener('click', () => {
   saveProject({
@@ -948,8 +985,63 @@ saveBtn.addEventListener('click', () => {
     style,
     customFont: undefined,
   });
+  pushToCloud();
 });
-onDirtyChange(() => { dirtyDot.hidden = !isDirty(); });
+onDirtyChange(() => {
+  dirtyDot.hidden = !isDirty();
+  if (isDirty()) scheduleAutosave();
+});
+
+// ---------------- browse cloud projects ----------------
+const browseProjectsBtn = $<HTMLButtonElement>('#browseProjectsBtn');
+const cloudProjectsModal = $('#cloudProjectsModal');
+const cloudProjectsStatus = $('#cloudProjectsStatus');
+const cloudProjectsList = $('#cloudProjectsList');
+const cloudProjectsClose = $('#cloudProjectsClose');
+
+browseProjectsBtn.addEventListener('click', async () => {
+  cloudProjectsModal.hidden = false;
+  cloudProjectsList.innerHTML = '';
+  cloudProjectsStatus.textContent = 'Loading…';
+  try {
+    const list = await fetchCloudProjects();
+    cloudProjectsStatus.textContent = `${list.length} cloud projects`;
+    if (!list.length) {
+      cloudProjectsList.innerHTML = '<div class="global-lib-empty">No projects saved yet — build one and it\'ll autosave here.</div>';
+      return;
+    }
+    for (const entry of list) {
+      const row = document.createElement('button');
+      row.className = 'cloud-project-row';
+      const name = document.createElement('span');
+      name.className = 'cpr-name';
+      name.textContent = entry.name;
+      const meta = document.createElement('span');
+      meta.className = 'cpr-meta';
+      meta.textContent = `${entry.video_name || 'no video name'} · ${new Date(entry.updated_at).toLocaleDateString()}`;
+      row.appendChild(name);
+      row.appendChild(meta);
+      row.addEventListener('click', async () => {
+        cloudProjectsStatus.textContent = 'Loading project…';
+        try {
+          const full = await fetchCloudProject(entry.id);
+          applyLoadedStyle(full.style.name || 'Custom', full.style);
+          applyChunkPackage({ videoName: full.video_name || '', words: full.words || [], chunks: full.chunks });
+          projectName.value = full.name;
+          cloudProjectId = full.id;
+          cloudProjectsModal.hidden = true;
+          setPhase('footage');
+        } catch (err: any) {
+          cloudProjectsStatus.textContent = err.message;
+        }
+      });
+      cloudProjectsList.appendChild(row);
+    }
+  } catch (err: any) {
+    cloudProjectsStatus.textContent = err.message;
+  }
+});
+cloudProjectsClose.addEventListener('click', () => { cloudProjectsModal.hidden = true; });
 
 // ---------------- export ----------------
 exportBtn.addEventListener('click', () => { exportModal.hidden = false; });

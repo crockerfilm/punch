@@ -60,6 +60,23 @@ if (pool) {
       created_at TIMESTAMPTZ DEFAULT now()
     )
   `).then(() => console.log('global_styles table ready')).catch(err => console.error('DB init failed:', err));
+
+  // Projects: chunks + style + the transcript, deliberately no video file — just
+  // enough to reopen and re-upload the same source video without redoing
+  // transcription/AI work. Browsable + autosavable like the style library.
+  pool.query(`
+    CREATE TABLE IF NOT EXISTS projects (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      video_name TEXT,
+      duration REAL,
+      words JSONB,
+      chunks JSONB NOT NULL,
+      style JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now(),
+      updated_at TIMESTAMPTZ DEFAULT now()
+    )
+  `).then(() => console.log('projects table ready')).catch(err => console.error('DB init failed:', err));
 }
 
 /** Calls Claude, returns the first text block's content (skipping any thinking/tool blocks). */
@@ -346,6 +363,81 @@ app.delete('/api/global-styles/:id', async (req, res) => {
   if (!pool) return res.status(503).json({ error: 'Global library not configured on this server' });
   try {
     await pool.query('DELETE FROM global_styles WHERE id = $1', [req.params.id]);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+/**
+ * Cloud projects — same optional/Postgres-backed pattern as global styles.
+ * No video file is ever stored, just enough to reopen and re-upload the source.
+ */
+app.get('/api/projects', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Cloud projects not configured on this server' });
+  try {
+    const { rows } = await pool.query(
+      'SELECT id, name, video_name, updated_at FROM projects ORDER BY updated_at DESC LIMIT 300'
+    );
+    res.json({ projects: rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.get('/api/projects/:id', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Cloud projects not configured on this server' });
+  try {
+    const { rows } = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ project: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.post('/api/projects', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Cloud projects not configured on this server' });
+  const { name, videoName, duration, words, chunks, style } = req.body || {};
+  if (!name || !chunks || !style) return res.status(400).json({ error: 'name, chunks, and style are required' });
+  try {
+    const { rows } = await pool.query(
+      `INSERT INTO projects (name, video_name, duration, words, chunks, style)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, name, updated_at`,
+      [String(name).slice(0, 200), videoName || null, duration || null, JSON.stringify(words || []), JSON.stringify(chunks), JSON.stringify(style)]
+    );
+    res.json({ saved: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.put('/api/projects/:id', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Cloud projects not configured on this server' });
+  const { name, videoName, duration, words, chunks, style } = req.body || {};
+  if (!name || !chunks || !style) return res.status(400).json({ error: 'name, chunks, and style are required' });
+  try {
+    const { rows } = await pool.query(
+      `UPDATE projects SET name=$1, video_name=$2, duration=$3, words=$4, chunks=$5, style=$6, updated_at=now()
+       WHERE id = $7 RETURNING id, name, updated_at`,
+      [String(name).slice(0, 200), videoName || null, duration || null, JSON.stringify(words || []), JSON.stringify(chunks), JSON.stringify(style), req.params.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: 'Not found' });
+    res.json({ saved: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  }
+});
+
+app.delete('/api/projects/:id', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'Cloud projects not configured on this server' });
+  try {
+    await pool.query('DELETE FROM projects WHERE id = $1', [req.params.id]);
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

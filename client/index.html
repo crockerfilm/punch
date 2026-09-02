@@ -58,6 +58,7 @@
               Upload a chunks file
             </label>
             <input id="landingChunksInput" type="file" accept=".json" hidden>
+            <button id="browseProjectsBtn" class="link-btn" style="margin-top:0;">Browse cloud projects →</button>
           </div>
         </div>
 
@@ -217,6 +218,7 @@
         <div class="topbar-left" id="topbarFootageLeft" hidden>
           <input id="projectName" class="project-name" value="Untitled project">
           <span id="dirtyDot" class="dirty" hidden><span class="dot"></span>Unsaved changes</span>
+          <span id="cloudStatus" class="cloud-status" hidden></span>
           <button id="saveBtn" class="btn-save">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 4H16L19 7V20H5V4Z" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/><path d="M8 4V9H15V4" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/></svg>
             Save project
@@ -279,6 +281,15 @@
       <div id="globalLibraryStatus" class="global-lib-status"></div>
       <div id="globalLibraryGrid" class="global-lib-grid"></div>
       <button id="globalLibraryClose" class="modal-close">Close</button>
+    </div>
+  </div>
+
+  <div id="cloudProjectsModal" class="modal" hidden>
+    <div class="modal-card modal-card-wide">
+      <div class="modal-title">Cloud projects</div>
+      <div id="cloudProjectsStatus" class="global-lib-status"></div>
+      <div id="cloudProjectsList" class="cloud-projects-list"></div>
+      <button id="cloudProjectsClose" class="modal-close">Close</button>
     </div>
   </div>
 
