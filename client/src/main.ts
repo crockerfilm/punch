@@ -9,7 +9,7 @@ import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styl
 import { fetchGlobalStyles, saveToGlobalLibrary } from './lib/globalLibrary';
 import { downloadChunks, loadChunksFromFile } from './lib/chunkPackage';
 import { autoChunkByFit } from './lib/autoChunk';
-import { fetchCloudProjects, fetchCloudProject, saveCloudProject } from './lib/cloudProjects';
+import { fetchCloudProjects, fetchCloudProject, saveCloudProject, deleteCloudProject } from './lib/cloudProjects';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 
@@ -1008,12 +1008,13 @@ onDirtyChange(() => {
 
 // ---------------- browse cloud projects ----------------
 const browseProjectsBtn = $<HTMLButtonElement>('#browseProjectsBtn');
+const projectsMenuBtn = $<HTMLButtonElement>('#projectsMenuBtn');
 const cloudProjectsModal = $('#cloudProjectsModal');
 const cloudProjectsStatus = $('#cloudProjectsStatus');
 const cloudProjectsList = $('#cloudProjectsList');
 const cloudProjectsClose = $('#cloudProjectsClose');
 
-browseProjectsBtn.addEventListener('click', async () => {
+async function openCloudProjectsBrowser() {
   cloudProjectsModal.hidden = false;
   cloudProjectsList.innerHTML = '';
   cloudProjectsStatus.textContent = 'Loading…';
@@ -1025,17 +1026,21 @@ browseProjectsBtn.addEventListener('click', async () => {
       return;
     }
     for (const entry of list) {
-      const row = document.createElement('button');
+      const row = document.createElement('div');
       row.className = 'cloud-project-row';
+
+      const main = document.createElement('button');
+      main.className = 'cpr-main';
       const name = document.createElement('span');
       name.className = 'cpr-name';
       name.textContent = entry.name;
       const meta = document.createElement('span');
       meta.className = 'cpr-meta';
       meta.textContent = `${entry.video_name || 'no video name'} · ${new Date(entry.updated_at).toLocaleDateString()}`;
-      row.appendChild(name);
-      row.appendChild(meta);
-      row.addEventListener('click', async () => {
+      main.appendChild(name);
+      main.appendChild(meta);
+      main.addEventListener('click', async () => {
+        if (isDirty() && !confirm('You have unsaved changes in the current project. Load a different one and discard them?')) return;
         cloudProjectsStatus.textContent = 'Loading project…';
         try {
           const full = await fetchCloudProject(entry.id);
@@ -1049,12 +1054,39 @@ browseProjectsBtn.addEventListener('click', async () => {
           cloudProjectsStatus.textContent = err.message;
         }
       });
+
+      const del = document.createElement('button');
+      del.className = 'cpr-delete';
+      del.title = 'Delete project';
+      del.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M4 7H20M9 7V5C9 4.45 9.45 4 10 4H14C14.55 4 15 4.45 15 5V7M18 7L17.2 19.2C17.15 19.9 16.55 20.5 15.85 20.5H8.15C7.45 20.5 6.85 19.9 6.8 19.2L6 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      del.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (!confirm(`Permanently delete "${entry.name}"? This can't be undone.`)) return;
+        del.disabled = true;
+        try {
+          await deleteCloudProject(entry.id);
+          if (cloudProjectId === entry.id) cloudProjectId = null;
+          row.remove();
+          const remaining = cloudProjectsList.querySelectorAll('.cloud-project-row').length;
+          cloudProjectsStatus.textContent = `${remaining} cloud projects`;
+          if (!remaining) cloudProjectsList.innerHTML = '<div class="global-lib-empty">No projects saved yet — build one and it\'ll autosave here.</div>';
+        } catch (err: any) {
+          cloudProjectsStatus.textContent = err.message;
+          del.disabled = false;
+        }
+      });
+
+      row.appendChild(main);
+      row.appendChild(del);
       cloudProjectsList.appendChild(row);
     }
   } catch (err: any) {
     cloudProjectsStatus.textContent = err.message;
   }
-});
+}
+
+browseProjectsBtn.addEventListener('click', openCloudProjectsBrowser);
+projectsMenuBtn.addEventListener('click', openCloudProjectsBrowser);
 cloudProjectsClose.addEventListener('click', () => { cloudProjectsModal.hidden = true; });
 
 // ---------------- export ----------------

@@ -21,6 +21,8 @@ button,input,select{font-family:inherit;color:inherit;}
 .logo:disabled{opacity:0.4;cursor:not-allowed;}
 .title{font-family:var(--font-display);font-weight:700;font-size:17px;}
 .sub{margin-left:auto;font-size:11px;color:var(--muted-2);font-weight:600;}
+.brand-icon-btn{flex-shrink:0;width:26px;height:26px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.brand-icon-btn:hover{color:var(--accent);border-color:rgba(240,179,76,0.45);}
 .divider{height:1px;background:var(--border-soft);margin:0 20px 18px 20px;}
 .section{padding:0 16px;margin-bottom:14px;}
 .section-h{display:flex;align-items:center;gap:8px;padding:0 4px 10px 4px;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;}
@@ -156,10 +158,13 @@ input[type=color]{width:100%;height:30px;border-radius:7px;border:1px solid var(
 .cloud-status.error{color:#e05858;}
 
 .cloud-projects-list{overflow-y:auto;flex:1;margin-bottom:12px;display:flex;flex-direction:column;gap:6px;}
-.cloud-project-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:9px;background:var(--panel-2);cursor:pointer;text-align:left;}
+.cloud-project-row{display:flex;align-items:center;gap:4px;padding:4px;border:1px solid var(--border);border-radius:9px;background:var(--panel-2);}
 .cloud-project-row:hover{border-color:rgba(240,179,76,0.55);}
-.cloud-project-row .cpr-name{font-weight:700;font-size:13px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.cloud-project-row .cpr-meta{font-size:11px;color:var(--muted-2);flex-shrink:0;}
+.cpr-main{display:flex;align-items:center;gap:10px;flex:1;min-width:0;padding:6px 8px;border:none;background:transparent;cursor:pointer;text-align:left;color:inherit;font:inherit;}
+.cpr-name{font-weight:700;font-size:13px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cpr-meta{font-size:11px;color:var(--muted-2);flex-shrink:0;}
+.cpr-delete{flex-shrink:0;width:28px;height:28px;border-radius:7px;border:none;background:transparent;color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;}
+.cpr-delete:hover{color:#e05252;background:rgba(224,82,82,0.12);}
 .modal-title{font-weight:700;font-size:15px;margin-bottom:12px;}
 .modal-btn{width:100%;text-align:left;padding:12px;border-radius:9px;border:1px solid var(--border);background:var(--panel-2);color:var(--text);font-size:12.5px;font-weight:600;line-height:1.4;cursor:pointer;margin-bottom:8px;}
 .modal-btn:hover{border-color:var(--accent);}
