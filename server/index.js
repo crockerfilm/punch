@@ -47,7 +47,7 @@ app.use('/api', (req, res, next) => {
 // local dev without it just runs with the global library disabled, everything
 // else works the same.
 const pool = process.env.DATABASE_URL
-  ? new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes('railway') ? { rejectUnauthorized: false } : false })
+  ? new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: process.env.DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false } })
   : null;
 
 if (pool) {
