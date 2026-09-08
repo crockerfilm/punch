@@ -39,3 +39,19 @@ window.addEventListener('beforeunload', (e) => {
   e.preventDefault();
   e.returnValue = '';
 });
+
+// beforeunload doesn't reliably fire for trackpad swipe / mouse "back"
+// gesture navigation in some browsers (notably Safari), since that's
+// history navigation rather than a real page unload. Intercept it via
+// a dummy history entry so we can show our own confirm before letting
+// the gesture actually leave the app.
+let allowHistoryLeave = false;
+history.pushState(null, '', location.href);
+window.addEventListener('popstate', () => {
+  if (allowHistoryLeave || !dirty) return;
+  history.pushState(null, '', location.href);
+  if (confirm('You have unsaved changes. Leave this page anyway?')) {
+    allowHistoryLeave = true;
+    history.back();
+  }
+});
