@@ -116,15 +116,13 @@ function resetForNewProject() {
   cloudProjectId = null;
   clearTimeout(autosaveTimer);
   pendingStyle = null;
-  pendingChunks = null;
   video.removeAttribute('src');
   fileCard.hidden = true;
   dropzone.hidden = false;
   emptyState.hidden = false;
   landingStyleChip.hidden = true;
-  landingChunksChip.hidden = true;
   landingStyleChip.innerHTML = '';
-  landingChunksChip.innerHTML = '';
+  updateLandingStartBtn();
   markClean();
 }
 
@@ -1041,6 +1039,25 @@ saveBtn.addEventListener('click', () => {
   });
   pushToCloud();
 });
+
+const saveAsBtn = $<HTMLButtonElement>('#saveAsBtn');
+saveAsBtn.addEventListener('click', async () => {
+  if (!chunks.length) { window.alert('Nothing to save yet — build some captions first.'); return; }
+  const suggested = projectName.value ? `${projectName.value} copy` : 'Untitled project copy';
+  const name = (window.prompt('Name for the new project:', suggested) || '').trim();
+  if (!name) return;
+  projectName.value = name;
+  cloudProjectId = null;
+  saveProject({
+    name,
+    videoName: videoFile?.name || '',
+    duration: video.duration || 0,
+    chunks,
+    style,
+    customFont: undefined,
+  });
+  await pushToCloud();
+});
 onDirtyChange(() => {
   dirtyDot.hidden = !isDirty();
   if (isDirty()) scheduleAutosave();
@@ -1171,13 +1188,14 @@ async function runExport(kind: 'png' | 'mp4' | 'prores') {
 // PHASE 0 — LANDING
 // ================================================================
 const landingStyleInput = $<HTMLInputElement>('#landingStyleInput');
-const landingChunksInput = $<HTMLInputElement>('#landingChunksInput');
 const landingStyleChip = $('#landingStyleChip');
-const landingChunksChip = $('#landingChunksChip');
 const landingStartBtn = $<HTMLButtonElement>('#landingStartBtn');
 
 let pendingStyle: { name: string; style: StylePreset } | null = null;
-let pendingChunks: Awaited<ReturnType<typeof loadChunksFromFile>> | null = null;
+
+function updateLandingStartBtn() {
+  landingStartBtn.textContent = pendingStyle ? 'Continue with this preset →' : 'Build a new style from scratch →';
+}
 
 landingStyleInput.addEventListener('change', async () => {
   const f = landingStyleInput.files?.[0];
@@ -1187,24 +1205,12 @@ landingStyleInput.addEventListener('change', async () => {
     pendingStyle = await loadStyleFromFile(f);
     landingStyleChip.hidden = false;
     landingStyleChip.innerHTML = `<span>${pendingStyle.name}</span><span class="tag">loaded</span>`;
+    updateLandingStartBtn();
   } catch (err: any) {
     window.alert('Could not load that style file: ' + err.message);
   }
 });
-landingChunksInput.addEventListener('change', async () => {
-  const f = landingChunksInput.files?.[0];
-  landingChunksInput.value = '';
-  if (!f) return;
-  try {
-    pendingChunks = await loadChunksFromFile(f);
-    landingChunksChip.hidden = false;
-    landingChunksChip.innerHTML = `<span>${pendingChunks.chunks.length} chunks (${f.name})</span><span class="tag">loaded</span>`;
-  } catch (err: any) {
-    window.alert('Could not load that chunks file: ' + err.message);
-  }
-});
 landingStartBtn.addEventListener('click', () => {
-  if (pendingChunks) applyChunkPackage(pendingChunks);
   if (pendingStyle) {
     applyLoadedStyle(pendingStyle.name, pendingStyle.style);
     setPhase('footage');
@@ -1247,6 +1253,7 @@ browseGlobalBtn.addEventListener('click', async () => {
         pendingStyle = { name: entry.name, style: entry.style };
         landingStyleChip.hidden = false;
         landingStyleChip.innerHTML = `<span>${entry.name}</span><span class="tag">loaded</span>`;
+        updateLandingStartBtn();
         globalLibraryModal.hidden = true;
       });
       globalLibraryGrid.appendChild(card);

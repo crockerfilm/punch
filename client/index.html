@@ -28,7 +28,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12L10 6M4 12L10 18M4 12H20" stroke="#241a04" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="title">Punch</div>
-        <div class="sub">v0.2</div>
+        <div class="sub">v0.3</div>
         <button id="newProjectBtn" class="brand-icon-btn" title="New project">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
@@ -41,34 +41,30 @@
       <!-- ============ PHASE 0: LANDING ============ -->
       <div id="phaseLandingSidebar">
         <div class="section">
-          <div class="section-h">Get started</div>
-          <div class="wizard-sub" style="margin-bottom:14px;">Import a saved style and/or a previous chunks file to skip ahead, browse the global style library or your cloud projects below, or leave everything blank to build a new style from scratch.</div>
+          <div class="section-h">Open a project</div>
+          <div class="wizard-sub" style="margin-bottom:14px;">Projects hold your footage's transcript, captions, and style together, autosaved to the cloud as you work.</div>
+          <button id="browseProjectsBtn" class="link-btn" style="margin-top:0;">Browse cloud projects →</button>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="section">
+          <div class="section-h">Start from a preset</div>
+          <div class="wizard-sub" style="margin-bottom:14px;">A preset is just the look (font, colors, animation) — no footage attached yet.</div>
 
           <div class="field">
-            <label>Style (optional)</label>
             <div id="landingStyleChip" class="font-chip" hidden></div>
             <label class="upload-font" for="landingStyleInput">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#8d8c96" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Upload a style file
+              Upload a preset file
             </label>
             <input id="landingStyleInput" type="file" accept=".json" hidden>
             <button id="browseGlobalBtn" class="link-btn" style="margin-top:0;">Browse global library →</button>
           </div>
-
-          <div class="field">
-            <label>Chunks (optional)</label>
-            <div id="landingChunksChip" class="font-chip" hidden></div>
-            <label class="upload-font" for="landingChunksInput">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3V15M12 15L7 10M12 15L17 10M4 20H20" stroke="#8d8c96" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              Upload a chunks file
-            </label>
-            <input id="landingChunksInput" type="file" accept=".json" hidden>
-            <button id="browseProjectsBtn" class="link-btn" style="margin-top:0;">Browse cloud projects →</button>
-          </div>
         </div>
 
         <div class="export-wrap">
-          <button id="landingStartBtn" class="btn-export">Get started →</button>
+          <button id="landingStartBtn" class="btn-export">Build a new style from scratch →</button>
         </div>
       </div>
 
@@ -224,6 +220,9 @@
           <button id="saveBtn" class="btn-save">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none"><path d="M5 4H16L19 7V20H5V4Z" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/><path d="M8 4V9H15V4" stroke="#8d8c96" stroke-width="2" stroke-linejoin="round"/></svg>
             Save project
+          </button>
+          <button id="saveAsBtn" class="btn-save" title="Save as a new project, leaving this one untouched">
+            Save as new
           </button>
         </div>
         <div class="topbar-left" id="topbarStyleLeft">
