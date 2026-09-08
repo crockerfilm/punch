@@ -28,7 +28,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12L10 6M4 12L10 18M4 12H20" stroke="#241a04" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="title">Punch</div>
-        <div class="sub">v0.4</div>
+        <div class="sub">v0.5</div>
         <button id="newProjectBtn" class="brand-icon-btn" title="New project">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
@@ -164,7 +164,7 @@
           <div class="section-h"><div class="step">1</div>Upload video</div>
           <div id="dropzone" class="dropzone">
             <input id="fileInput" type="file" accept="video/*" hidden>
-            <span><strong>Click to browse</strong> or drag &amp; drop</span>
+            <span id="dropzoneHint"><strong>Click to browse</strong> or drag &amp; drop</span>
           </div>
           <div id="fileCard" class="file-card" hidden>
             <div class="thumb"></div>
@@ -193,8 +193,8 @@
             </label>
             <button id="aiRerun" class="btn-ghost-ai" disabled>Generate captions</button>
             <div class="chunk-io-row">
-              <button id="exportChunksBtn" class="btn-ghost" disabled>Export chunks</button>
-              <label class="btn-ghost" for="importChunksInput" style="text-align:center;cursor:pointer;">Import chunks</label>
+              <button id="exportChunksBtn" class="btn-ghost" disabled title="Download the transcript and captions as a backup file">Download backup</button>
+              <label class="btn-ghost" for="importChunksInput" style="text-align:center;cursor:pointer;" title="Load a previously downloaded backup file">Load backup</label>
               <input id="importChunksInput" type="file" accept=".json" hidden>
             </div>
             <button id="retranscribeBtn" class="btn-ghost" style="width:100%;margin-top:8px;" disabled>Transcript missing words? Re-run transcript</button>

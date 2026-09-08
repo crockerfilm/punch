@@ -124,10 +124,12 @@ function resetForNewProject() {
   cloudProjectId = null;
   clearTimeout(autosaveTimer);
   pendingStyle = null;
+  expectedVideoName = '';
   video.removeAttribute('src');
   fileCard.hidden = true;
   dropzone.hidden = false;
   emptyState.hidden = false;
+  updateDropzoneHint();
   landingStyleChip.hidden = true;
   landingStyleChip.innerHTML = '';
   updateLandingStartBtn();
@@ -612,11 +614,25 @@ tCaps.addEventListener('click', () => { style.caps = !style.caps; syncCustomizeU
 // PHASE 2 — FOOTAGE
 // ================================================================
 const dropzone = $('#dropzone');
+const dropzoneHint = $('#dropzoneHint');
 const fileInput = $<HTMLInputElement>('#fileInput');
 const fileCard = $('#fileCard');
 const fileName = $('#fileName');
 const fileInfo = $('#fileInfo');
 const fileRemove = $('#fileRemove');
+
+let expectedVideoName = '';
+function updateDropzoneHint() {
+  if (expectedVideoName && !videoFile) {
+    dropzoneHint.innerHTML = '';
+    dropzoneHint.append(document.createTextNode('Upload '));
+    const strong = document.createElement('strong');
+    strong.textContent = expectedVideoName;
+    dropzoneHint.append(strong, document.createTextNode(' to continue this project'));
+  } else {
+    dropzoneHint.innerHTML = '<strong>Click to browse</strong> or drag &amp; drop';
+  }
+}
 const statusEl = $('#status');
 const aiSummary = $('#aiSummary');
 const aiDesc = $('#aiDesc');
@@ -635,10 +651,16 @@ function applyChunkPackage(pkg: { videoName: string; words: Word[]; chunks: Chun
   words = pkg.words;
   chunks = pkg.chunks;
   selectedChunk = null;
+  expectedVideoName = pkg.videoName || '';
   aiSummary.textContent = `${chunks.length} caption chunks imported`;
-  aiDesc.textContent = pkg.videoName && videoFile && pkg.videoName !== videoFile.name
-    ? `Imported from "${pkg.videoName}" — double check timing lines up with this video.`
-    : 'Loaded from a previous export — no need to re-transcribe.';
+  if (videoFile && expectedVideoName && expectedVideoName !== videoFile.name) {
+    aiDesc.textContent = `Heads up — this project was made from "${expectedVideoName}", but the attached video is "${videoFile.name}". Timing may not line up.`;
+  } else if (!videoFile && expectedVideoName) {
+    aiDesc.textContent = `Upload "${expectedVideoName}" above to see this project with its footage.`;
+  } else {
+    aiDesc.textContent = 'Loaded from a previous export — no need to re-transcribe.';
+  }
+  updateDropzoneHint();
   aiRerun.disabled = !words.length;
   renderTimeline();
   editRow.hidden = true;
@@ -653,7 +675,7 @@ importChunksInput.addEventListener('change', async () => {
   try {
     applyChunkPackage(await loadChunksFromFile(f));
   } catch (err: any) {
-    window.alert('Could not load that chunks file: ' + err.message);
+    window.alert('Could not load that backup file: ' + err.message);
   }
 });
 const playBtn = $('#playBtn');
@@ -693,6 +715,8 @@ fileRemove.addEventListener('click', () => {
   dropzone.hidden = false;
   emptyState.hidden = false;
   words = []; chunks = [];
+  expectedVideoName = '';
+  updateDropzoneHint();
   renderTimeline();
   updateAiCard();
 });
@@ -719,7 +743,10 @@ function handleFile(f: File) {
     aiRerun.disabled = false;
     retranscribeBtn.disabled = false;
     aiSummary.textContent = `${chunks.length} caption chunks loaded`;
-    aiDesc.textContent = 'Video attached — captions kept as loaded. Use "Re-run transcript" if you need to re-transcribe this video instead.';
+    aiDesc.textContent = expectedVideoName && expectedVideoName !== f.name
+      ? `Heads up — this project was made from "${expectedVideoName}", but you uploaded "${f.name}". Timing may not line up — use "Re-run transcript" if it's off.`
+      : 'Video attached — captions kept as loaded. Use "Re-run transcript" if you need to re-transcribe this video instead.';
+    updateDropzoneHint();
     renderTimeline();
     markDirty();
   }
