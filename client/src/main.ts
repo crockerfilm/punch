@@ -101,10 +101,42 @@ function setPhase(p: Phase) {
   }
 }
 
+function resetForNewProject() {
+  style = { ...DEFAULT_STYLE };
+  currentStyleName = 'Custom';
+  wizardIndex = 0;
+  wizardDone = false;
+  wizardEditing = false;
+  words = [];
+  chunks = [];
+  selectedChunk = null;
+  videoFile = null;
+  videoFps = 30;
+  customFontName = null;
+  cloudProjectId = null;
+  clearTimeout(autosaveTimer);
+  pendingStyle = null;
+  pendingChunks = null;
+  video.removeAttribute('src');
+  fileCard.hidden = true;
+  dropzone.hidden = false;
+  emptyState.hidden = false;
+  landingStyleChip.hidden = true;
+  landingChunksChip.hidden = true;
+  landingStyleChip.innerHTML = '';
+  landingChunksChip.innerHTML = '';
+  markClean();
+}
+
 const backBtn = $<HTMLButtonElement>('#backBtn');
 backBtn.addEventListener('click', () => {
-  if (phase === 'footage') setPhase('style');
-  else if (phase === 'style') setPhase('landing');
+  if (phase === 'footage') { setPhase('style'); return; }
+  if (phase === 'style') {
+    const hasProgress = words.length > 0 || chunks.length > 0 || wizardDone;
+    if (hasProgress && !confirm('Going back to start will clear this in-progress style and any footage — nothing is saved automatically here. Continue?')) return;
+    resetForNewProject();
+    setPhase('landing');
+  }
 });
 
 // ================================================================
@@ -1170,6 +1202,7 @@ landingStartBtn.addEventListener('click', () => {
     setPhase('footage');
   } else {
     setPhase('style');
+    renderWizard();
   }
 });
 
