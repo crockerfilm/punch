@@ -28,7 +28,7 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M4 12L10 6M4 12L10 18M4 12H20" stroke="#241a04" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         </button>
         <div class="title">Punch</div>
-        <div class="sub">v0.3</div>
+        <div class="sub">v0.4</div>
         <button id="newProjectBtn" class="brand-icon-btn" title="New project">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M12 5V19M5 12H19" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
@@ -40,17 +40,17 @@
 
       <!-- ============ PHASE 0: LANDING ============ -->
       <div id="phaseLandingSidebar">
-        <div class="section">
-          <div class="section-h">Open a project</div>
-          <div class="wizard-sub" style="margin-bottom:14px;">Projects hold your footage's transcript, captions, and style together, autosaved to the cloud as you work.</div>
-          <button id="browseProjectsBtn" class="link-btn" style="margin-top:0;">Browse cloud projects →</button>
+        <div id="landingStep1" class="section">
+          <div class="section-h">Get started</div>
+          <div class="wizard-sub" style="margin-bottom:14px;">Pick up where you left off, or start something new.</div>
+          <button id="openProjectStepBtn" class="btn-export" style="margin-bottom:10px;">Open a project →</button>
+          <button id="startNewStepBtn" class="btn-ghost" style="width:100%;">Start new →</button>
         </div>
 
-        <div class="divider"></div>
-
-        <div class="section">
+        <div id="landingStep2" class="section" hidden>
+          <button id="landingBackBtn" class="link-btn" style="margin-top:0;margin-bottom:10px;">← Back</button>
           <div class="section-h">Start from a preset</div>
-          <div class="wizard-sub" style="margin-bottom:14px;">A preset is just the look (font, colors, animation) — no footage attached yet.</div>
+          <div class="wizard-sub" style="margin-bottom:14px;">A preset is just the look (font, colors, animation) — no footage attached yet. Leave this blank to build a brand new one.</div>
 
           <div class="field">
             <div id="landingStyleChip" class="font-chip" hidden></div>
@@ -61,10 +61,10 @@
             <input id="landingStyleInput" type="file" accept=".json" hidden>
             <button id="browseGlobalBtn" class="link-btn" style="margin-top:0;">Browse global library →</button>
           </div>
-        </div>
 
-        <div class="export-wrap">
-          <button id="landingStartBtn" class="btn-export">Build a new style from scratch →</button>
+          <div class="export-wrap">
+            <button id="landingStartBtn" class="btn-export">Build a new style from scratch →</button>
+          </div>
         </div>
       </div>
 

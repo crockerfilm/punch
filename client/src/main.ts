@@ -74,11 +74,19 @@ const tcWrap = $('#tcWrap');
 const footageControls = $('#footageControls');
 const stylePreviewNote = $('#stylePreviewNote');
 const styleSummaryName = $('#styleSummaryName');
+const landingStep1 = $('#landingStep1');
+const landingStep2 = $('#landingStep2');
+
+function showLandingStep(n: 1 | 2) {
+  landingStep1.hidden = n !== 1;
+  landingStep2.hidden = n !== 2;
+}
 
 function setPhase(p: Phase) {
   phase = p;
   const isFootage = p === 'footage';
   const isLanding = p === 'landing';
+  if (isLanding) showLandingStep(1);
   phaseLandingSidebar.hidden = !isLanding;
   phaseStyleSidebar.hidden = isLanding || isFootage;
   phaseFootageSidebar.hidden = !isFootage;
@@ -1064,7 +1072,7 @@ onDirtyChange(() => {
 });
 
 // ---------------- browse cloud projects ----------------
-const browseProjectsBtn = $<HTMLButtonElement>('#browseProjectsBtn');
+const openProjectStepBtn = $<HTMLButtonElement>('#openProjectStepBtn');
 const projectsMenuBtn = $<HTMLButtonElement>('#projectsMenuBtn');
 const cloudProjectsModal = $('#cloudProjectsModal');
 const cloudProjectsStatus = $('#cloudProjectsStatus');
@@ -1142,7 +1150,7 @@ async function openCloudProjectsBrowser() {
   }
 }
 
-browseProjectsBtn.addEventListener('click', openCloudProjectsBrowser);
+openProjectStepBtn.addEventListener('click', openCloudProjectsBrowser);
 projectsMenuBtn.addEventListener('click', openCloudProjectsBrowser);
 cloudProjectsClose.addEventListener('click', () => { cloudProjectsModal.hidden = true; });
 
@@ -1190,6 +1198,11 @@ async function runExport(kind: 'png' | 'mp4' | 'prores') {
 const landingStyleInput = $<HTMLInputElement>('#landingStyleInput');
 const landingStyleChip = $('#landingStyleChip');
 const landingStartBtn = $<HTMLButtonElement>('#landingStartBtn');
+const startNewStepBtn = $<HTMLButtonElement>('#startNewStepBtn');
+const landingBackBtn = $<HTMLButtonElement>('#landingBackBtn');
+
+startNewStepBtn.addEventListener('click', () => showLandingStep(2));
+landingBackBtn.addEventListener('click', () => showLandingStep(1));
 
 let pendingStyle: { name: string; style: StylePreset } | null = null;
 
