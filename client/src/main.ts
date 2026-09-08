@@ -128,16 +128,24 @@ function resetForNewProject() {
   markClean();
 }
 
+function hasUnfinishedProgress() {
+  return phase !== 'landing' && (words.length > 0 || chunks.length > 0 || wizardDone || !!videoFile);
+}
+
+function goToNewProject() {
+  if (hasUnfinishedProgress() && !confirm('Start a new project? This clears your current in-progress style and footage — nothing is saved automatically here.')) return;
+  resetForNewProject();
+  setPhase('landing');
+}
+
 const backBtn = $<HTMLButtonElement>('#backBtn');
 backBtn.addEventListener('click', () => {
   if (phase === 'footage') { setPhase('style'); return; }
-  if (phase === 'style') {
-    const hasProgress = words.length > 0 || chunks.length > 0 || wizardDone;
-    if (hasProgress && !confirm('Going back to start will clear this in-progress style and any footage — nothing is saved automatically here. Continue?')) return;
-    resetForNewProject();
-    setPhase('landing');
-  }
+  if (phase === 'style') goToNewProject();
 });
+
+const newProjectBtn = $<HTMLButtonElement>('#newProjectBtn');
+newProjectBtn.addEventListener('click', goToNewProject);
 
 // ================================================================
 // PHASE 1 — STYLE BUILDER
