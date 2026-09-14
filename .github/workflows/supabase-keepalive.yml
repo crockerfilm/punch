@@ -1,0 +1,31 @@
+name: Supabase keepalive
+
+# Runs on GitHub's own servers on a schedule — not dependent on any local
+# machine being on. A single read-only "SELECT 1" against the Supabase
+# Postgres database; nothing is read, written, or modified. Its only
+# purpose is to register as activity so Supabase's free-tier auto-pause
+# (7 days idle) never triggers.
+on:
+  schedule:
+    - cron: '15 7 * * *' # daily, 07:15 UTC
+  workflow_dispatch: {} # lets us trigger it manually to test
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install pg@8
+      - env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node -e "
+          const pg = require('pg');
+          const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
+          client.connect()
+            .then(() => client.query('SELECT 1 AS ok'))
+            .then((res) => { console.log('keepalive ok:', res.rows[0]); return client.end(); })
+            .catch((err) => { console.error('keepalive FAILED:', err.message); process.exit(1); });
+          "
