@@ -28,11 +28,6 @@ export function saveProject(p: Project) {
   markClean();
 }
 
-export function loadProject(): Project | null {
-  const raw = localStorage.getItem(KEY);
-  return raw ? JSON.parse(raw) : null;
-}
-
 // Warn on tab close / reload while there are unsaved changes.
 window.addEventListener('beforeunload', (e) => {
   if (!dirty) return;

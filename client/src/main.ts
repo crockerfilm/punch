@@ -4,7 +4,7 @@ import { DEFAULT_STYLE, ANIMATIONS, EMPHASIS_MODES, EMPHASIS_STYLES, FONT_CHOICE
 import { drawFrame, loadCustomFont, renderStylePreviewDataUrl } from './lib/render';
 import { transcribeVideo, suggestEmphasis } from './lib/api';
 import { exportPngSequence, exportPreviewMp4, exportProResAlpha } from './lib/export';
-import { saveProject, loadProject, markDirty, markClean, onDirtyChange, isDirty } from './lib/project';
+import { saveProject, markDirty, markClean, onDirtyChange, isDirty } from './lib/project';
 import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styleLibrary';
 import { fetchGlobalStyles, saveToGlobalLibrary } from './lib/globalLibrary';
 import { downloadChunks, loadChunksFromFile } from './lib/chunkPackage';
@@ -1308,25 +1308,16 @@ globalLibraryClose.addEventListener('click', () => { globalLibraryModal.hidden =
 // init (gated behind the shared-password check, when one is configured)
 // ================================================================
 function boot() {
+  // Landing is always the entry point now that cloud projects (with autosave and a
+  // browsable list) are the real "resume where you left off" mechanism — this used to
+  // silently auto-restore the old local single-slot save straight into the footage
+  // phase on every boot, which meant a tab that had ever saved a project behaved
+  // completely differently from a fresh one (skipping landing, showing a half-populated
+  // footage view with no video attached). "Save project" still writes a local mirror
+  // to localStorage, it just no longer gets auto-restored on boot.
   renderWizard();
   renderTimeline();
-
-  const existing = loadProject();
-  if (existing && existing.chunks?.length) {
-    projectName.value = existing.name;
-    chunks = existing.chunks;
-    style = existing.style;
-    currentStyleName = style.name || 'Custom';
-    wizardDone = true;
-    fineTuneSection.hidden = false;
-    styleActionsWrap.hidden = false;
-    syncCustomizeUI();
-    renderWizard();
-    renderTimeline();
-    setPhase('footage');
-  } else {
-    setPhase('landing');
-  }
+  setPhase('landing');
 }
 
 (async () => {
