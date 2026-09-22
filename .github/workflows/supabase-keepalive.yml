@@ -1,10 +1,15 @@
 name: Supabase keepalive
 
 # Runs on GitHub's own servers on a schedule — not dependent on any local
-# machine being on. A single read-only "SELECT 1" against the Supabase
-# Postgres database; nothing is read, written, or modified. Its only
-# purpose is to register as activity so Supabase's free-tier auto-pause
-# (7 days idle) never triggers.
+# machine being on. A read-only query against a real table; nothing is
+# written or modified. Its only purpose is to register as activity so
+# Supabase's free-tier auto-pause (7 days idle) never triggers.
+#
+# Originally ran "SELECT 1" (no table touched) and this still got flagged
+# for pausing despite running daily without fail — Supabase's activity
+# detection apparently doesn't count a query that doesn't hit a real
+# table/relation. Switched to a real (still trivial, still read-only)
+# SELECT against an actual table.
 on:
   schedule:
     - cron: '15 7 * * *' # daily, 07:15 UTC
@@ -25,7 +30,7 @@ jobs:
           const pg = require('pg');
           const client = new pg.Client({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
           client.connect()
-            .then(() => client.query('SELECT 1 AS ok'))
-            .then((res) => { console.log('keepalive ok:', res.rows[0]); return client.end(); })
+            .then(() => client.query('SELECT id FROM projects LIMIT 1'))
+            .then((res) => { console.log('keepalive ok, rows touched:', res.rowCount); return client.end(); })
             .catch((err) => { console.error('keepalive FAILED:', err.message); process.exit(1); });
           "
