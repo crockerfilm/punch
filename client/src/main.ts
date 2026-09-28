@@ -143,8 +143,14 @@ function hasUnfinishedProgress() {
   return phase !== 'landing' && (words.length > 0 || chunks.length > 0 || wizardDone || !!videoFile);
 }
 
+/** Shared "you're about to discard something" gate: true (proceed) when there's nothing
+ * at stake, or the user confirms the given message; false (stop) otherwise. */
+function confirmIfAtRisk(atRisk: unknown, message: string): boolean {
+  return !atRisk || confirm(message);
+}
+
 function goToNewProject() {
-  if (hasUnfinishedProgress() && !confirm('Start a new project? This clears your current in-progress style and footage — nothing is saved automatically here.')) return;
+  if (!confirmIfAtRisk(hasUnfinishedProgress(), 'Start a new project? This clears your current in-progress style and footage — nothing is saved automatically here.')) return;
   resetForNewProject();
   setPhase('landing');
 }
@@ -789,7 +795,7 @@ async function runTranscription(f: File) {
 
 retranscribeBtn.addEventListener('click', () => {
   if (!videoFile) return;
-  if (chunks.length && !confirm('Re-running the transcript keeps your existing caption chunks as-is — you\'ll need to click "Generate captions" again afterward if you want them rebuilt from the new transcript. Continue?')) return;
+  if (!confirmIfAtRisk(chunks.length, 'Re-running the transcript keeps your existing caption chunks as-is — you\'ll need to click "Generate captions" again afterward if you want them rebuilt from the new transcript. Continue?')) return;
   runTranscription(videoFile);
 });
 
@@ -1155,7 +1161,7 @@ async function openCloudProjectsBrowser() {
       main.appendChild(name);
       main.appendChild(meta);
       main.addEventListener('click', async () => {
-        if (isDirty() && !confirm('You have unsaved changes in the current project. Load a different one and discard them?')) return;
+        if (!confirmIfAtRisk(isDirty(), 'You have unsaved changes in the current project. Load a different one and discard them?')) return;
         cloudProjectsStatus.textContent = 'Loading project…';
         try {
           const full = await fetchCloudProject(entry.id);

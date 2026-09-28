@@ -1,4 +1,5 @@
 import type { Chunk, StylePreset } from './types';
+import { setMeasureFont, maxLineWidth } from './textMeasure';
 
 function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const rr = Math.min(r, w / 2, h / 2);
@@ -29,6 +30,23 @@ export function findActiveChunk(chunks: Chunk[], t: number): Chunk | null {
   return null;
 }
 
+// The word-wrap below (a measureText call per word, every frame) is the same for every
+// frame of a chunk's on-screen duration — only the animation progress changes, not the
+// wrapped lines themselves — except in one-word mode, where the single displayed word
+// changes as playback moves between the chunk's words. Caching by (chunk, that word
+// index, font, size, caps) skips redoing it at up to 60fps for output that's identical
+// frame-to-frame within those bounds.
+let wrapCache: {
+  chunk: Chunk;
+  idx: number;
+  font: string;
+  size: number;
+  caps: boolean;
+  lines: { word: string; start: number; end: number; emphasis?: boolean }[][];
+  lineWidths: number[];
+  fullW: number;
+} | null = null;
+
 function yFromPos(cv: HTMLCanvasElement, percent: number) {
   return Math.round(cv.height * (percent / 100));
 }
@@ -49,43 +67,51 @@ export function drawFrame(
   const caps = style.caps;
   const y = yFromPos(cv, chunk.placement ?? style.vpos);
   const fontSize = style.size;
-  ctx.font = `900 ${fontSize}px "${style.font}", sans-serif`;
+  setMeasureFont(ctx, style);
   ctx.textBaseline = 'alphabetic';
 
   // one-word-at-a-time mode: only the word currently being spoken is on screen
   let sourceWords = chunk.words;
+  let oneWordIdx = -1;
   if (style.oneWordMode) {
-    let idx = 0;
+    oneWordIdx = 0;
     for (let i = 0; i < chunk.words.length; i++) {
-      if (t >= chunk.words[i].start) idx = i; else break;
+      if (t >= chunk.words[i].start) oneWordIdx = i; else break;
     }
-    sourceWords = [chunk.words[idx]];
+    sourceWords = [chunk.words[oneWordIdx]];
   }
 
   const words = sourceWords.map(w => ({ ...w, word: caps ? w.word.toUpperCase() : w.word }));
   const measure = (s: string) => ctx.measureText(s).width;
   const x = cv.width / 2;
-  const maxLineW = cv.width * 0.86;
+  const maxLineW = maxLineWidth(cv.width);
   // entrance timing anchors to the word's own start in one-word mode (each word is its own beat),
   // otherwise to the whole chunk's start.
   const entranceAnchor = style.oneWordMode ? words[0].start : chunk.start;
 
-  // greedy word-wrap so long chunks never run off the frame edges
-  const lines: (typeof words)[] = [];
-  let lineStart = 0;
-  for (let i = 1; i <= words.length; i++) {
-    const testLine = words.slice(lineStart, i).map(w => w.word).join(' ');
-    const overflows = measure(testLine) > maxLineW && i - 1 > lineStart;
-    const isLast = i === words.length;
-    if (overflows) {
-      lines.push(words.slice(lineStart, i - 1));
-      lineStart = i - 1;
-    } else if (isLast) {
-      lines.push(words.slice(lineStart, i));
+  let lines: (typeof words)[], lineWidths: number[], fullW: number;
+  if (wrapCache && wrapCache.chunk === chunk && wrapCache.idx === oneWordIdx
+    && wrapCache.font === style.font && wrapCache.size === fontSize && wrapCache.caps === caps) {
+    ({ lines, lineWidths, fullW } = wrapCache);
+  } else {
+    // greedy word-wrap so long chunks never run off the frame edges
+    lines = [];
+    let lineStart = 0;
+    for (let i = 1; i <= words.length; i++) {
+      const testLine = words.slice(lineStart, i).map(w => w.word).join(' ');
+      const overflows = measure(testLine) > maxLineW && i - 1 > lineStart;
+      const isLast = i === words.length;
+      if (overflows) {
+        lines.push(words.slice(lineStart, i - 1));
+        lineStart = i - 1;
+      } else if (isLast) {
+        lines.push(words.slice(lineStart, i));
+      }
     }
+    lineWidths = lines.map(line => measure(line.map(w => w.word).join(' ')));
+    fullW = Math.max(...lineWidths);
+    wrapCache = { chunk, idx: oneWordIdx, font: style.font, size: fontSize, caps, lines, lineWidths, fullW };
   }
-  const lineWidths = lines.map(line => measure(line.map(w => w.word).join(' ')));
-  const fullW = Math.max(...lineWidths);
   const lineHeight = Math.round(fontSize * 1.18);
   const blockH = lines.length * lineHeight;
   // first line's baseline, so the whole block is vertically centered on the anchor y

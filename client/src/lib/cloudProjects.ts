@@ -1,4 +1,5 @@
 import type { Chunk, StylePreset, Word } from './types';
+import { fetchJson } from './http';
 
 export interface CloudProjectEntry {
   id: number;
@@ -15,16 +16,12 @@ export interface CloudProjectFull extends CloudProjectEntry {
 }
 
 export async function fetchCloudProjects(): Promise<CloudProjectEntry[]> {
-  const r = await fetch('/api/projects');
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Cloud projects unavailable');
-  const { projects } = await r.json();
+  const { projects } = await fetchJson<{ projects: CloudProjectEntry[] }>('/api/projects', undefined, 'Cloud projects unavailable');
   return projects;
 }
 
 export async function fetchCloudProject(id: number): Promise<CloudProjectFull> {
-  const r = await fetch(`/api/projects/${id}`);
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not load that project');
-  const { project } = await r.json();
+  const { project } = await fetchJson<{ project: CloudProjectFull }>(`/api/projects/${id}`, undefined, 'Could not load that project');
   return project;
 }
 
@@ -39,17 +36,14 @@ export interface ProjectSavePayload {
 
 /** Creates a new cloud project if `id` is null, otherwise updates that one in place (used for autosave). */
 export async function saveCloudProject(id: number | null, data: ProjectSavePayload): Promise<{ id: number; name: string; updated_at: string }> {
-  const r = await fetch(id ? `/api/projects/${id}` : '/api/projects', {
-    method: id ? 'PUT' : 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(data),
-  });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not save to the cloud');
-  const { saved } = await r.json();
+  const { saved } = await fetchJson<{ saved: { id: number; name: string; updated_at: string } }>(
+    id ? `/api/projects/${id}` : '/api/projects',
+    { method: id ? 'PUT' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(data) },
+    'Could not save to the cloud',
+  );
   return saved;
 }
 
 export async function deleteCloudProject(id: number): Promise<void> {
-  const r = await fetch(`/api/projects/${id}`, { method: 'DELETE' });
-  if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Could not delete');
+  await fetchJson(`/api/projects/${id}`, { method: 'DELETE' }, 'Could not delete');
 }

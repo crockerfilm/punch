@@ -1,4 +1,5 @@
 import type { Chunk, StylePreset, Word } from './types';
+import { createOffscreenMeasureCtx, maxLineWidth } from './textMeasure';
 
 /**
  * Groups words into caption chunks with no AI call at all: greedily fills each
@@ -10,10 +11,8 @@ import type { Chunk, StylePreset, Word } from './types';
 export function autoChunkByFit(words: Word[], style: StylePreset, frameWidth: number): Chunk[] {
   if (!words.length) return [];
 
-  const canvas = document.createElement('canvas');
-  const ctx = canvas.getContext('2d')!;
-  ctx.font = `900 ${style.size}px "${style.font}", sans-serif`;
-  const maxLineW = frameWidth * 0.86;
+  const ctx = createOffscreenMeasureCtx(style);
+  const maxLineW = maxLineWidth(frameWidth);
   const PAUSE_SEC = 0.5;
   const display = (w: string) => (style.caps ? w.toUpperCase() : w);
   const measure = (s: string) => ctx.measureText(s).width;
