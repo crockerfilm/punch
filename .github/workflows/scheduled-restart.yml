@@ -1,0 +1,23 @@
+name: Scheduled restart
+
+# Periodically restarts the punch service (process restart only, no rebuild) to reset
+# Node's memory footprint back to baseline. Long-lived Node processes don't reliably hand
+# large heap allocations back to the OS on their own, so the service's memory usage tends
+# to step up and plateau at a new, higher level once real traffic starts hitting it rather
+# than shrinking back down — see HANDOFF.md for the investigation. A weekly restart is
+# cheap insurance against that compounding into real cost over time, on top of (not
+# instead of) the disk-storage fix for the two upload routes that were the likely direct
+# cause of that step-up.
+on:
+  schedule:
+    - cron: '30 9 * * 0' # weekly, Sunday 09:30 UTC — a low-traffic window
+  workflow_dispatch: {} # lets us trigger it manually to test
+
+jobs:
+  restart:
+    runs-on: ubuntu-latest
+    steps:
+      - run: npm install -g @railway/cli
+      - env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway restart -y --service punch

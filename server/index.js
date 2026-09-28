@@ -18,7 +18,24 @@ const clientDist = path.join(__dirname, '../client/dist');
 
 const execFileAsync = promisify(execFile);
 const app = express();
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 500 * 1024 * 1024 } });
+// Disk storage, not memoryStorage — a transcribe/export upload can be a few hundred MB,
+// and buffering the whole thing in the Node heap (memoryStorage's whole point) leaves
+// that memory retained long after the request ends, since V8 doesn't reliably hand large
+// heap allocations back to the OS. Each upload gets its own fresh temp dir so route
+// handlers can just use it as their scratch space instead of creating a second one.
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, file, cb) => {
+      try {
+        cb(null, await mkdtemp(path.join(tmpdir(), 'punch-upload-')));
+      } catch (err) {
+        cb(err);
+      }
+    },
+    filename: (req, file, cb) => cb(null, 'upload' + path.extname(file.originalname || '')),
+  }),
+  limits: { fileSize: 500 * 1024 * 1024 },
+});
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -154,13 +171,11 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no file' });
   if (!process.env.GROQ_API_KEY) return res.status(500).json({ error: 'GROQ_API_KEY not configured' });
 
-  const dir = await mkdtemp(path.join(tmpdir(), 'punch-'));
-  const inPath = path.join(dir, 'in' + path.extname(req.file.originalname || '.mp4'));
+  const dir = path.dirname(req.file.path);
+  const inPath = req.file.path;
   const outPath = path.join(dir, 'audio.mp3');
 
   try {
-    await writeFile(inPath, req.file.buffer);
-
     await execFileAsync(ffmpegPath, [
       '-y', '-i', inPath,
       '-vn', '-ac', '1', '-ar', '16000', '-b:a', '64k',
@@ -247,9 +262,9 @@ app.post('/api/export-prores', upload.single('frames'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'no frames zip' });
   const fps = Math.max(1, Math.min(120, Math.round(+req.body.fps || 30)));
 
-  const dir = await mkdtemp(path.join(tmpdir(), 'punch-prores-'));
+  const dir = path.dirname(req.file.path);
   try {
-    const zip = await JSZip.loadAsync(req.file.buffer);
+    const zip = await JSZip.loadAsync(await readFile(req.file.path));
     const names = Object.keys(zip.files).filter(n => n.endsWith('.png')).sort();
     if (!names.length) return res.status(400).json({ error: 'zip had no frames' });
     for (const name of names) {
