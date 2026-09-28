@@ -133,7 +133,7 @@ function resetForNewProject() {
   landingStyleChip.hidden = true;
   landingStyleChip.innerHTML = '';
   updateLandingStartBtn();
-  projectName.value = 'Untitled project';
+  projectName.value = DEFAULT_PROJECT_NAME;
   editRow.hidden = true;
   renderTimeline();
   markClean();
@@ -697,6 +697,7 @@ const timeline = $('#timeline');
 const chunkCount = $('#chunkCount');
 const editRow = $('#editRow');
 const projectName = $<HTMLInputElement>('#projectName');
+const DEFAULT_PROJECT_NAME = 'Untitled project';
 const dirtyDot = $('#dirtyDot');
 const saveBtn = $('#saveBtn');
 const exportBtn = $<HTMLButtonElement>('#exportBtn');
@@ -740,6 +741,12 @@ function handleFile(f: File) {
   dropzone.hidden = true;
   fileCard.hidden = false;
   fileName.textContent = f.name;
+  // Default the project name to the video's filename so cloud projects aren't a wall of
+  // indistinguishable "Untitled project" rows — only when nothing more specific has been
+  // set yet (a typed name, or one already carried in from a loaded project).
+  if (!projectName.value.trim() || projectName.value === DEFAULT_PROJECT_NAME) {
+    projectName.value = f.name.replace(/\.[^.]+$/, '');
+  }
   video.addEventListener('loadedmetadata', () => {
     fileInfo.textContent = `${fmtTC(video.duration)} · ${video.videoWidth}×${video.videoHeight}`;
     tcTot.textContent = fmtTC(video.duration);
@@ -1059,7 +1066,7 @@ async function pushToCloudOnce() {
   setCloudStatus('saving', 'Saving to cloud…');
   try {
     const saved = await saveCloudProject(cloudProjectId, {
-      name: projectName.value || 'Untitled project',
+      name: projectName.value || DEFAULT_PROJECT_NAME,
       videoName: videoFile?.name || '',
       duration: video.duration || 0,
       words,
