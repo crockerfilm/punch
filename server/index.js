@@ -6,7 +6,7 @@ import JSZip from 'jszip';
 import pg from 'pg';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { mkdtemp, readFile, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, writeFile, rm, readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -15,6 +15,32 @@ import ffmpegPath from 'ffmpeg-static';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const clientDist = path.join(__dirname, '../client/dist');
+
+// Every upload route cleans up its own punch-upload-* temp dir in a finally block, but
+// that only runs if the route handler actually gets to run — a Multer-layer failure
+// (e.g. the fileSize limit) rejects before that, leaking the dir. Rather than chase every
+// individual error path, sweep anything left over from a previous run/failure on startup.
+async function sweepStaleTempDirs() {
+  const cutoffMs = Date.now() - 60 * 60 * 1000; // 1 hour — well past any real request
+  let entries;
+  try {
+    entries = await readdir(tmpdir());
+  } catch {
+    return;
+  }
+  for (const name of entries) {
+    if (!name.startsWith('punch-')) continue;
+    const full = path.join(tmpdir(), name);
+    try {
+      const info = await stat(full);
+      if (info.isDirectory() && info.mtimeMs < cutoffMs) {
+        await rm(full, { recursive: true, force: true });
+      }
+    } catch {
+      // gone already, or a transient stat error — not worth failing startup over
+    }
+  }
+}
 
 const execFileAsync = promisify(execFile);
 const app = express();
@@ -180,7 +206,7 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
       '-y', '-i', inPath,
       '-vn', '-ac', '1', '-ar', '16000', '-b:a', '64k',
       outPath,
-    ]);
+    ], { maxBuffer: 1024 * 1024 * 50 });
 
     const { duration, fps } = await getVideoInfo(inPath);
     const words = [];
@@ -196,7 +222,7 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
         await execFileAsync(ffmpegPath, [
           '-y', '-ss', String(start), '-t', String(SEGMENT_SECONDS), '-i', outPath,
           '-c', 'copy', segPath,
-        ]);
+        ], { maxBuffer: 1024 * 1024 * 50 });
         const json = await transcribeChunk(await readFile(segPath), `seg_${start}.mp3`);
         for (const w of json.words || []) {
           words.push({ word: w.word.trim(), start: w.start + start, end: w.end + start });
@@ -206,6 +232,28 @@ app.post('/api/transcribe', upload.single('video'), async (req, res) => {
     }
 
     res.json({ words, text: texts.join(' ').trim(), fps: fps || 30, duration });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: String(err.message || err) });
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => {});
+  }
+});
+
+/**
+ * POST /api/video-info
+ * multipart form field "video" -> just probes duration/fps via ffmpeg, no Whisper call.
+ * Used when a video is attached to a project that already has words/chunks (so the
+ * normal transcribe step is skipped to avoid re-paying for it) but the newly-attached
+ * file's actual frame rate still needs to be known for export, since it may differ from
+ * whatever video the chunks were originally transcribed from.
+ */
+app.post('/api/video-info', upload.single('video'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'no file' });
+  const dir = path.dirname(req.file.path);
+  try {
+    const { duration, fps } = await getVideoInfo(req.file.path);
+    res.json({ fps: fps || 30, duration });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: String(err.message || err) });
@@ -269,7 +317,11 @@ app.post('/api/export-prores', upload.single('frames'), async (req, res) => {
     if (!names.length) return res.status(400).json({ error: 'zip had no frames' });
     for (const name of names) {
       const buf = await zip.files[name].async('nodebuffer');
-      await writeFile(path.join(dir, name), buf);
+      // basename only — frame entries are always flat (frame_00000.png, no
+      // subdirectories), and stripping any path segments closes off a zip-slip
+      // path-traversal write (e.g. an entry named "../../../etc/whatever.png")
+      // regardless of what the uploaded zip's internal names actually contain.
+      await writeFile(path.join(dir, path.basename(name)), buf);
     }
 
     const outPath = path.join(dir, 'output.mov');
@@ -420,6 +472,17 @@ if (existsSync(clientDist)) {
     res.sendFile(path.join(clientDist, 'index.html'));
   });
 }
+
+// Catches errors from middleware that runs before any route handler — a Multer failure
+// (oversized upload, bad multipart field) or a malformed JSON body — which would otherwise
+// fall through to Express's default HTML error page. Every client-side fetch wrapper
+// assumes a JSON body back from /api/*, so this keeps that contract even on those paths.
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(err.status || err.statusCode || 500).json({ error: err.message || 'Internal server error' });
+});
+
+sweepStaleTempDirs().catch(() => {});
 
 const port = process.env.PORT || 8787;
 app.listen(port, () => console.log(`punch server on :${port}`));

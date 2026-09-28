@@ -2,7 +2,7 @@ import { checkAuthRequired, verifyPassword, getStoredPassword, setStoredPassword
 import type { Chunk, StylePreset, Word } from './lib/types';
 import { DEFAULT_STYLE, ANIMATIONS, EMPHASIS_MODES, EMPHASIS_STYLES, FONT_CHOICES } from './lib/presets';
 import { drawFrame, loadCustomFont, renderStylePreviewDataUrl } from './lib/render';
-import { transcribeVideo, suggestEmphasis } from './lib/api';
+import { transcribeVideo, suggestEmphasis, getVideoInfo } from './lib/api';
 import { exportPngSequence, exportPreviewMp4, exportProResAlpha } from './lib/export';
 import { saveProject, markDirty, markClean, onDirtyChange, isDirty } from './lib/project';
 import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styleLibrary';
@@ -133,6 +133,9 @@ function resetForNewProject() {
   landingStyleChip.hidden = true;
   landingStyleChip.innerHTML = '';
   updateLandingStartBtn();
+  projectName.value = 'Untitled project';
+  editRow.hidden = true;
+  renderTimeline();
   markClean();
 }
 
@@ -489,6 +492,7 @@ function applyLoadedStyle(name: string, loaded: StylePreset) {
 saveStyleBtn.addEventListener('click', () => {
   const name = (window.prompt('Name this style:', currentStyleName === 'Custom' ? '' : currentStyleName) || '').trim();
   if (!name) return;
+  style.name = name;
   saveStyleToLibrary(name, style);
   currentStyleName = name;
 });
@@ -499,6 +503,7 @@ saveGlobalBtn.addEventListener('click', async () => {
   saveGlobalBtn.disabled = true;
   saveGlobalBtn.textContent = 'Saving…';
   try {
+    style.name = name;
     const preview = renderStylePreviewDataUrl(style);
     await saveToGlobalLibrary(name, style, preview);
     currentStyleName = name;
@@ -715,6 +720,8 @@ fileRemove.addEventListener('click', () => {
   dropzone.hidden = false;
   emptyState.hidden = false;
   words = []; chunks = [];
+  selectedChunk = null;
+  editRow.hidden = true;
   expectedVideoName = '';
   updateDropzoneHint();
   renderTimeline();
@@ -749,6 +756,11 @@ function handleFile(f: File) {
     updateDropzoneHint();
     renderTimeline();
     markDirty();
+    // Chunks already exist so we deliberately skip re-transcribing (that's the whole
+    // point of this branch), but videoFps was only ever set by transcription — refresh
+    // it from whatever video actually got attached so export doesn't silently keep
+    // encoding at a stale frame rate left over from a previous, different-fps video.
+    getVideoInfo(f).then(info => { videoFps = info.fps; }).catch(() => {});
   }
 }
 
@@ -1036,7 +1048,7 @@ function setCloudStatus(kind: 'saving' | 'saved' | 'error' | '', text: string) {
   cloudStatus.textContent = text;
 }
 
-async function pushToCloud() {
+async function pushToCloudOnce() {
   if (!chunks.length) return;
   setCloudStatus('saving', 'Saving to cloud…');
   try {
@@ -1054,6 +1066,17 @@ async function pushToCloud() {
   } catch (err: any) {
     setCloudStatus('error', 'Cloud save unavailable');
   }
+}
+
+// Two calls (the debounced autosave firing right as "Save project" is clicked, say) can
+// otherwise both read cloudProjectId as null before either finishes and both POST a new
+// row instead of the second one PUT-ing over the first. Chaining every call through one
+// promise means each save fully completes (and cloudProjectId is updated) before the next
+// one reads it.
+let cloudSaveChain: Promise<void> = Promise.resolve();
+function pushToCloud(): Promise<void> {
+  cloudSaveChain = cloudSaveChain.then(pushToCloudOnce, pushToCloudOnce);
+  return cloudSaveChain;
 }
 
 function scheduleAutosave() {
@@ -1142,6 +1165,7 @@ async function openCloudProjectsBrowser() {
           cloudProjectId = full.id;
           cloudProjectsModal.hidden = true;
           setPhase('footage');
+          markClean();
         } catch (err: any) {
           cloudProjectsStatus.textContent = err.message;
         }

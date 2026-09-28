@@ -44,7 +44,7 @@ export function drawFrame(
   ctx.clearRect(0, 0, cv.width, cv.height);
 
   const chunk = findActiveChunk(chunks, t);
-  if (!chunk) return;
+  if (!chunk || !chunk.words.length) return;
 
   const caps = style.caps;
   const y = yFromPos(cv, chunk.placement ?? style.vpos);
