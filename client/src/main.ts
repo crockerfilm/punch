@@ -2,7 +2,7 @@ import { checkAuthRequired, verifyPassword, getStoredPassword, setStoredPassword
 import type { Chunk, StylePreset, Word } from './lib/types';
 import { DEFAULT_STYLE, ANIMATIONS, EMPHASIS_MODES, EMPHASIS_STYLES, FONT_CHOICES } from './lib/presets';
 import { drawFrame, loadCustomFont, renderStylePreviewDataUrl } from './lib/render';
-import { transcribeVideo, suggestEmphasis, getVideoInfo } from './lib/api';
+import { transcribeVideo, getVideoInfo } from './lib/api';
 import { exportPngSequence, exportPreviewMp4, exportProResAlpha } from './lib/export';
 import { saveProject, markDirty, markClean, onDirtyChange, isDirty } from './lib/project';
 import { saveStyleToLibrary, downloadStyle, loadStyleFromFile } from './lib/styleLibrary';
@@ -104,7 +104,6 @@ function setPhase(p: Phase) {
   } else {
     styleSummaryName.textContent = currentStyleName;
     emptyState.hidden = !!videoFile;
-    aiEmphasisRow.hidden = style.emphasisMode !== 'auto';
     draw();
   }
 }
@@ -648,8 +647,6 @@ const statusEl = $('#status');
 const aiSummary = $('#aiSummary');
 const aiDesc = $('#aiDesc');
 const aiRerun = $<HTMLButtonElement>('#aiRerun');
-const aiEmphasisRow = $('#aiEmphasisRow');
-const aiEmphasisFlagBox = $<HTMLInputElement>('#aiEmphasisFlag');
 const exportChunksBtn = $<HTMLButtonElement>('#exportChunksBtn');
 const importChunksInput = $<HTMLInputElement>('#importChunksInput');
 const retranscribeBtn = $<HTMLButtonElement>('#retranscribeBtn');
@@ -809,21 +806,15 @@ retranscribeBtn.addEventListener('click', () => {
 aiRerun.addEventListener('click', async () => {
   if (!words.length) return;
   aiRerun.disabled = true;
-  const wantEmphasis = style.emphasisMode === 'auto' && aiEmphasisFlagBox.checked;
   try {
-    let c = autoChunkByFit(words, style, video.videoWidth || 1080);
-    if (wantEmphasis) {
-      aiRerun.textContent = 'Flagging keywords…';
-      ({ chunks: c } = await suggestEmphasis(c));
-    }
-    chunks = c;
+    chunks = autoChunkByFit(words, style, video.videoWidth || 1080);
     selectedChunk = null;
     aiSummary.textContent = `${chunks.length} caption chunks generated`;
     aiDesc.textContent = 'Adjust anything in the timeline below.';
     renderTimeline();
     markDirty();
   } catch (err: any) {
-    setStatus('bad', 'AI suggestion failed: ' + err.message);
+    setStatus('bad', 'Caption generation failed: ' + err.message);
   } finally {
     aiRerun.disabled = false;
     aiRerun.textContent = 'Re-run captions';

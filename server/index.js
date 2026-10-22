@@ -69,7 +69,7 @@ app.use(express.json({ limit: '10mb' }));
 // ---------------- shared-password gate (optional) ----------------
 // Only enforced when APP_PASSWORD is set — local dev without it stays fully open.
 // This is deliberately simple (one shared password, no accounts) — its only job
-// is stopping a stray public link from running up Whisper/Claude API costs, not
+// is stopping a stray public link from running up Whisper API costs, not
 // real auth. Checked server-side (not just hidden in the UI) since every route
 // below costs real money per call.
 app.get('/api/auth/status', (req, res) => {
@@ -120,32 +120,6 @@ if (pool) {
       updated_at TIMESTAMPTZ DEFAULT now()
     )
   `).then(() => console.log('projects table ready')).catch(err => console.error('DB init failed:', err));
-}
-
-/** Calls Claude, returns the first text block's content (skipping any thinking/tool blocks). */
-async function callClaude({ system, content, maxTokens = 4096 }) {
-  const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': process.env.ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-5',
-      max_tokens: maxTokens,
-      ...(system ? { system } : {}),
-      messages: [{ role: 'user', content }],
-    }),
-  });
-  if (!r.ok) throw new Error(`Anthropic API error ${r.status}: ${await r.text()}`);
-  const json = await r.json();
-  const textBlock = (json.content || []).find(b => b.type === 'text');
-  return textBlock?.text || '';
-}
-
-function extractJson(raw) {
-  return JSON.parse(raw.slice(raw.indexOf('{'), raw.lastIndexOf('}') + 1));
 }
 
 /**
@@ -259,42 +233,6 @@ app.post('/api/video-info', upload.single('video'), async (req, res) => {
     res.status(500).json({ error: String(err.message || err) });
   } finally {
     await rm(dir, { recursive: true, force: true }).catch(() => {});
-  }
-});
-
-/**
- * POST /api/suggest-emphasis
- * JSON body: { chunks: [{ text, start, end, words: [{word,start,end}] }] }
- * Picks one standout word per chunk without re-deciding chunk boundaries — the
- * cheap add-on for when chunking itself was done deterministically (no AI call)
- * but the emphasis-word pick is still wanted.
- * returns { chunks } with each chunk's words carrying `emphasis` booleans.
- */
-app.post('/api/suggest-emphasis', async (req, res) => {
-  const chunks = Array.isArray(req.body.chunks) ? req.body.chunks : [];
-  if (!chunks.length) return res.status(400).json({ error: 'no chunks' });
-  if (!process.env.ANTHROPIC_API_KEY) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
-
-  const listing = chunks.map((c, ci) => `${ci}: ${c.words.map((w, wi) => `${wi}:${w.word}`).join(' ')}`).join('\n');
-  const prompt = `You are picking the single standout "emphasis" word (the most important/loud word - numbers, product names, superlatives, strong verbs/adjectives) for each caption chunk below, if any. Not every chunk needs one. Chunks are given as "chunkIndex: wordIndex:word wordIndex:word ...".
-
-${listing}
-
-Respond with ONLY valid JSON, no prose: {"emphasis":[{"chunk":0,"word":1}, ...]} where "word" is the word's index within that chunk. Omit a chunk entirely if it has no clear standout word.`;
-
-  try {
-    const raw = await callClaude({ content: prompt, maxTokens: 2048 });
-    const parsed = extractJson(raw);
-    const picks = new Map((parsed.emphasis || []).map(p => [p.chunk, p.word]));
-
-    const result = chunks.map((c, ci) => ({
-      ...c,
-      words: c.words.map((w, wi) => ({ ...w, emphasis: picks.get(ci) === wi })),
-    }));
-    res.json({ chunks: result });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: String(err.message || err) });
   }
 });
 
