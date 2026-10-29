@@ -34,3 +34,18 @@ jobs:
             .then((res) => { console.log('keepalive ok, rows touched:', res.rowCount); return client.end(); })
             .catch((err) => { console.error('keepalive FAILED:', err.message); process.exit(1); });
           "
+      # The direct-Postgres query above ran daily without fail and the project
+      # still got flagged — Supabase's idle detection appears to count only
+      # traffic through its API gateway (REST/Auth), not direct DB
+      # connections. So also hit the REST API with the anon key. RLS may
+      # return an empty list; the request reaching the gateway is what counts.
+      - env:
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          test -n "$SUPABASE_ANON_KEY" || { echo 'SUPABASE_ANON_KEY secret not set'; exit 1; }
+          curl -sS --fail-with-body \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            'https://oxwwqpbanyvzwpbbnyif.supabase.co/rest/v1/projects?select=id&limit=1'
+          echo
+          echo 'rest keepalive ok'
